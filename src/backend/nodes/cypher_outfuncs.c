@@ -129,6 +129,7 @@ void out_cypher_match(StringInfo str, const ExtensibleNode *node)
 
     WRITE_NODE_FIELD(pattern);
     WRITE_NODE_FIELD(where);
+    WRITE_BOOL_FIELD(optional);
 }
 
 // serialization function for the cypher_create ExtensibleNode.
@@ -165,6 +166,13 @@ void out_cypher_delete(StringInfo str, const ExtensibleNode *node)
 
     WRITE_BOOL_FIELD(detach);
     WRITE_NODE_FIELD(exprs);
+}
+
+void out_cypher_unwind(StringInfo str, const ExtensibleNode *node)
+{
+    DEFINE_AG_NODE(cypher_unwind);
+
+    WRITE_NODE_FIELD(target);
 }
 
 // serialization function for the cypher_path ExtensibleNode.

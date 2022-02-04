@@ -87,11 +87,11 @@
                  LIMIT
                  MATCH
                  NOT NULL_P
-                 OR ORDER
+                 OPTIONAL OR ORDER
                  REMOVE RETURN
                  SET SKIP STARTS
                  THEN TRUE_P
-                 UNION
+                 UNION UNWIND
                  VERBOSE
                  WHEN WHERE WITH
                  XOR
@@ -111,8 +111,13 @@
 %type <node> match cypher_varlen_opt cypher_range_opt cypher_range_idx
              cypher_range_idx_opt
 %type <integer> Iconst
+%type <boolean> optional_opt
+
 /* CREATE clause */
 %type <node> create
+
+/* UNWIND clause */
+%type <node> unwind
 
 /* SET and REMOVE clause */
 %type <node> set set_item remove remove_item
@@ -229,7 +234,7 @@ stmt:
             extra->result = $1;
             extra->extra = NULL;
         }
-    | EXPLAIN single_query semicolon_opt
+    | EXPLAIN query_list semicolon_opt
         {
             ExplainStmt *estmt = NULL;
 
@@ -243,7 +248,7 @@ stmt:
             estmt->options = NIL;
             extra->extra = (Node *)estmt;
         }
-    | EXPLAIN VERBOSE single_query semicolon_opt
+    | EXPLAIN VERBOSE query_list semicolon_opt
         {
             ExplainStmt *estmt = NULL;
 
@@ -257,7 +262,7 @@ stmt:
             estmt->options = list_make1(makeDefElem("verbose", NULL, @2));;
             extra->extra = (Node *)estmt;
         }
-    | EXPLAIN ANALYZE single_query semicolon_opt
+    | EXPLAIN ANALYZE query_list semicolon_opt
         {
             ExplainStmt *estmt = NULL;
 
@@ -271,7 +276,7 @@ stmt:
             estmt->options = list_make1(makeDefElem("analyze", NULL, @2));;
             extra->extra = (Node *)estmt;
         }
-    | EXPLAIN ANALYZE VERBOSE single_query semicolon_opt
+    | EXPLAIN ANALYZE VERBOSE query_list semicolon_opt
         {
             ExplainStmt *estmt = NULL;
 
@@ -373,6 +378,7 @@ reading_clause_list:
 
 reading_clause:
     match
+    | unwind
     ;
 
 updating_clause_list_0:
@@ -709,17 +715,46 @@ with:
  */
 
 match:
-    MATCH pattern where_opt
+    optional_opt MATCH pattern where_opt
         {
             cypher_match *n;
 
             n = make_ag_node(cypher_match);
-            n->pattern = $2;
-            n->where = $3;
+            n->optional = $1;
+            n->pattern = $3;
+            n->where = $4;
 
             $$ = (Node *)n;
         }
     ;
+
+optional_opt:
+    OPTIONAL
+        {
+            $$ = true;
+        }
+    | /* EMPTY */
+        {
+            $$ = false;
+        }
+    ;
+
+
+unwind:
+    UNWIND expr AS var_name
+        {
+            ResTarget  *res;
+            cypher_unwind *n;
+
+            res = makeNode(ResTarget);
+            res->name = $4;
+            res->val = (Node *) $2;
+            res->location = @2;
+
+            n = make_ag_node(cypher_unwind);
+            n->target = res;
+            $$ = (Node *) n;
+        }
 
 /*
  * CREATE clause
@@ -1803,6 +1838,7 @@ safe_keywords:
     | LIMIT      { $$ = pnstrdup($1, 6); }
     | MATCH      { $$ = pnstrdup($1, 6); }
     | NOT        { $$ = pnstrdup($1, 3); }
+    | OPTIONAL   { $$ = pnstrdup($1, 8); }
     | OR         { $$ = pnstrdup($1, 2); }
     | ORDER      { $$ = pnstrdup($1, 5); }
     | REMOVE     { $$ = pnstrdup($1, 6); }

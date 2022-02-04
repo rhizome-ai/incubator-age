@@ -73,6 +73,7 @@ typedef struct cypher_match
     ExtensibleNode extensible;
     List *pattern; // a list of cypher_paths
     Node *where; // optional WHERE subclause (expression)
+    bool optional; // OPTIONAL MATCH
 } cypher_match;
 
 typedef struct cypher_create
@@ -114,6 +115,12 @@ typedef struct cypher_union
     List *larg; /* lefthand argument of the unions */
     List *rarg; /*righthand argument of the unions */
 } cypher_union;
+
+typedef struct cypher_unwind
+{
+    ExtensibleNode extensible;
+    ResTarget *target;
+} cypher_unwind;
 
 /*
  * pattern
